@@ -482,7 +482,8 @@ void FilterManager::updateProperty(INDI::Property prop)
         if (state == FILTER_CHANGE)
             executeOperationQueue();
         // If filter is changed externally, record its current offset as the starting offset.
-        else if (state == FILTER_IDLE && m_ActiveFilters.count() >= m_currentFilterPosition)
+        else if (state == FILTER_IDLE && m_currentFilterPosition >= 1
+                 && m_ActiveFilters.count() >= m_currentFilterPosition)
             lastFilterOffset = m_ActiveFilters[m_currentFilterPosition - 1]->offset();
     }
 }

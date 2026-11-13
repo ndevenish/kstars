@@ -319,7 +319,24 @@ void CameraProcess::toggleSequence()
     {
         // change the state back to capturing only if planned pause is cleared
         if (capturestate == CAPTURE_PAUSE_PLANNED)
+        {
+            // A planned pause waits for the running exposure to complete. If that exposure
+            // no longer exists (e.g. autofocus took over the camera and aborted it), nothing
+            // would ever complete it and the sequence would stall in "Capturing".
+            ISD::CameraChip *activeChip = devices()->getActiveChip();
+            const bool exposureInFlight = activeChip != nullptr && activeChip->isCapturing()
+                                          && activeChip->getCaptureMode() == FITS_NORMAL;
+
             state()->setCaptureState(CAPTURE_CAPTURING);
+
+            if (exposureInFlight == false)
+            {
+                qCInfo(KSTARS_EKOS_CAPTURE) << "Resuming from planned pause without an exposure in progress,"
+                                            << "restarting the interrupted frame.";
+                Q_EMIT newLog(i18n("Interrupted exposure detected, restarting frame."));
+                state()->setContinueAction(CAPTURE_CONTINUE_ACTION_NEXT_EXPOSURE);
+            }
+        }
 
         Q_EMIT newLog(i18n("Sequence resumed."));
 

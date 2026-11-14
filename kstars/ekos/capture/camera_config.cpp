@@ -1259,12 +1259,20 @@ void Camera::onStandAloneShow(QShowEvent * event)
     captureGainN->setValue(GainSpinSpecialValue);
     captureOffsetN->setValue(OffsetSpinSpecialValue);
 
-    m_standAloneUseCcdGain = true;
-    m_standAloneUseCcdOffset = true;
-    if (m_settings.contains(KEY_GAIN_KWD) && m_settings[KEY_GAIN_KWD].toString() == "CCD_CONTROLS")
-        m_standAloneUseCcdGain = false;
-    if (m_settings.contains(KEY_OFFSET_KWD) && m_settings[KEY_OFFSET_KWD].toString() == "CCD_CONTROLS")
-        m_standAloneUseCcdOffset = false;
+    // Which property the camera of this train uses for gain and offset, as recorded the
+    // last time the camera was connected. If unknown, the custom properties are updated
+    // wherever they already hold a value (see CaptureDeviceAdaptor::storeCameraControl).
+    auto controlSource = [this](const QString &key, const QString &dedicatedProperty)
+    {
+        const QString keyword = m_settings.value(key).toString();
+        if (keyword == "CCD_CONTROLS")
+            return CaptureDeviceAdaptor::CONTROL_CCD_CONTROLS;
+        if (keyword == dedicatedProperty)
+            return CaptureDeviceAdaptor::CONTROL_DEDICATED;
+        return CaptureDeviceAdaptor::CONTROL_UNKNOWN;
+    };
+    m_standAloneGainSource = controlSource(KEY_GAIN_KWD, "CCD_GAIN");
+    m_standAloneOffsetSource = controlSource(KEY_OFFSET_KWD, "CCD_OFFSET");
 
 
     // Capture Gain
@@ -1302,76 +1310,14 @@ void Camera::setStandAloneTemperatureRange(double min, double max)
 void Camera::setStandAloneGain(double value)
 {
     QMap<QString, QMap<QString, QVariant> > propertyMap = m_customPropertiesDialog->getCustomProperties();
-
-    if (m_standAloneUseCcdGain)
-    {
-        if (value >= 0)
-        {
-            QMap<QString, QVariant> ccdGain;
-            ccdGain["GAIN"] = value;
-            propertyMap["CCD_GAIN"] = ccdGain;
-        }
-        else
-        {
-            propertyMap["CCD_GAIN"].remove("GAIN");
-            if (propertyMap["CCD_GAIN"].size() == 0)
-                propertyMap.remove("CCD_GAIN");
-        }
-    }
-    else
-    {
-        if (value >= 0)
-        {
-            QMap<QString, QVariant> ccdGain = propertyMap["CCD_CONTROLS"];
-            ccdGain["Gain"] = value;
-            propertyMap["CCD_CONTROLS"] = ccdGain;
-        }
-        else
-        {
-            propertyMap["CCD_CONTROLS"].remove("Gain");
-            if (propertyMap["CCD_CONTROLS"].size() == 0)
-                propertyMap.remove("CCD_CONTROLS");
-        }
-    }
-
+    CaptureDeviceAdaptor::storeCameraControl(propertyMap, m_standAloneGainSource, "CCD_GAIN", "GAIN", "Gain", value);
     m_customPropertiesDialog->setCustomProperties(propertyMap);
 }
 
 void Camera::setStandAloneOffset(double value)
 {
     QMap<QString, QMap<QString, QVariant> > propertyMap = m_customPropertiesDialog->getCustomProperties();
-
-    if (m_standAloneUseCcdOffset)
-    {
-        if (value >= 0)
-        {
-            QMap<QString, QVariant> ccdOffset;
-            ccdOffset["OFFSET"] = value;
-            propertyMap["CCD_OFFSET"] = ccdOffset;
-        }
-        else
-        {
-            propertyMap["CCD_OFFSET"].remove("OFFSET");
-            if (propertyMap["CCD_OFFSET"].size() == 0)
-                propertyMap.remove("CCD_OFFSET");
-        }
-    }
-    else
-    {
-        if (value >= 0)
-        {
-            QMap<QString, QVariant> ccdOffset = propertyMap["CCD_CONTROLS"];
-            ccdOffset["Offset"] = value;
-            propertyMap["CCD_CONTROLS"] = ccdOffset;
-        }
-        else
-        {
-            propertyMap["CCD_CONTROLS"].remove("Offset");
-            if (propertyMap["CCD_CONTROLS"].size() == 0)
-                propertyMap.remove("CCD_CONTROLS");
-        }
-    }
-
+    CaptureDeviceAdaptor::storeCameraControl(propertyMap, m_standAloneOffsetSource, "CCD_OFFSET", "OFFSET", "Offset", value);
     m_customPropertiesDialog->setCustomProperties(propertyMap);
 }
 

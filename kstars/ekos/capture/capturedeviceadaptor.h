@@ -197,6 +197,36 @@ class CaptureDeviceAdaptor: public QObject
          *        Offset property value from CCD_CONTROLS.
          */
         double cameraOffset(QMap<QString, QMap<QString, QVariant> > propertyMap);
+
+        /**
+         * @brief Which INDI property carries a camera's gain or offset.
+         */
+        typedef enum
+        {
+            CONTROL_DEDICATED,  // e.g. CCD_GAIN/GAIN or CCD_OFFSET/OFFSET
+            CONTROL_CCD_CONTROLS, // e.g. CCD_CONTROLS/Gain or CCD_CONTROLS/Offset
+            CONTROL_UNKNOWN     // not known, e.g. editing a sequence without a camera
+        } CameraControlSource;
+
+        /**
+         * @brief storeCameraControl Store a gain or offset value in a custom property map.
+         *        A value can live either in a dedicated property (CCD_GAIN, CCD_OFFSET) or
+         *        in CCD_CONTROLS, and readers choose between them depending on whether a
+         *        camera is connected. To keep both readers in agreement, a value is never
+         *        left behind in the other location: if the source is known the other copy is
+         *        removed, otherwise every existing copy is updated.
+         * @param propertyMap custom property map to modify
+         * @param source where the camera expects the value
+         * @param dedicatedProperty name of the dedicated property, e.g. "CCD_OFFSET"
+         * @param dedicatedElement element in the dedicated property, e.g. "OFFSET"
+         * @param controlsElement element in CCD_CONTROLS, e.g. "Offset"
+         * @param value new value, or a negative value to clear it
+         */
+        static void storeCameraControl(QMap<QString, QMap<QString, QVariant> > &propertyMap,
+                                       CameraControlSource source,
+                                       const QString &dedicatedProperty, const QString &dedicatedElement,
+                                       const QString &controlsElement, double value);
+
         /**
          * @brief cameraOffset Retrieve the offset value from the active camera
          */

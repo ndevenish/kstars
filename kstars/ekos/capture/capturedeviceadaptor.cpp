@@ -524,6 +524,62 @@ double CaptureDeviceAdaptor::cameraGain(QMap<QString, QMap<QString, QVariant> > 
 
 }
 
+void CaptureDeviceAdaptor::storeCameraControl(QMap<QString, QMap<QString, QVariant> > &propertyMap,
+        CameraControlSource source,
+        const QString &dedicatedProperty, const QString &dedicatedElement,
+        const QString &controlsElement, double value)
+{
+    const QString controlsProperty = QStringLiteral("CCD_CONTROLS");
+
+    auto hasElement = [&propertyMap](const QString &property, const QString &element)
+    {
+        auto it = propertyMap.constFind(property);
+        return it != propertyMap.constEnd() && it->contains(element);
+    };
+    auto removeElement = [&propertyMap](const QString &property, const QString &element)
+    {
+        auto it = propertyMap.find(property);
+        if (it == propertyMap.end())
+            return;
+        it->remove(element);
+        if (it->isEmpty())
+            propertyMap.erase(it);
+    };
+    auto setElement = [&propertyMap, &removeElement](const QString &property, const QString &element, double value)
+    {
+        if (value >= 0)
+            propertyMap[property][element] = value;
+        else
+            removeElement(property, element);
+    };
+
+    switch (source)
+    {
+        case CONTROL_DEDICATED:
+            removeElement(controlsProperty, controlsElement);
+            setElement(dedicatedProperty, dedicatedElement, value);
+            break;
+
+        case CONTROL_CCD_CONTROLS:
+            removeElement(dedicatedProperty, dedicatedElement);
+            setElement(controlsProperty, controlsElement, value);
+            break;
+
+        case CONTROL_UNKNOWN:
+        {
+            // We cannot tell which copy the camera will read, so update every copy that
+            // exists; they can then never disagree. Default to the dedicated property.
+            const bool inControls = hasElement(controlsProperty, controlsElement);
+            const bool inDedicated = hasElement(dedicatedProperty, dedicatedElement);
+            if (inControls)
+                setElement(controlsProperty, controlsElement, value);
+            if (inDedicated || !inControls)
+                setElement(dedicatedProperty, dedicatedElement, value);
+            break;
+        }
+    }
+}
+
 double CaptureDeviceAdaptor::cameraGain()
 {
     double value = INVALID_VALUE;

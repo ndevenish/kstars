@@ -849,8 +849,8 @@ class Camera : public QWidget, public Ui::Camera
         std::unique_ptr<CustomProperties> m_customPropertiesDialog;
         QTimer m_DebounceTimer;
 
-        bool m_standAloneUseCcdGain { true};
-        bool m_standAloneUseCcdOffset { true};
+        CaptureDeviceAdaptor::CameraControlSource m_standAloneGainSource { CaptureDeviceAdaptor::CONTROL_UNKNOWN };
+        CaptureDeviceAdaptor::CameraControlSource m_standAloneOffsetSource { CaptureDeviceAdaptor::CONTROL_UNKNOWN };
         bool m_JobUnderEdit { false };
 
         QUrl m_dirPath;
